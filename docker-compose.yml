@@ -1,0 +1,53 @@
+services:
+  redis:
+    image: redis:7
+    restart: always
+    ports:
+      - "6379:6379"
+
+  ws:
+    build: ./ws-node
+    restart: always
+    depends_on:
+      - redis
+    environment:
+      REDIS_HOST: redis
+    ports:
+      - "8081:8081"
+
+  backend:
+    image: mdzenos/spring-core:1.0
+    container_name: backend
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      - "${DB_HOST:-localhost}"
+      - "${DB_PORT:-5432}"
+      - "${DB_NAME:-mydb}"
+      - "${DB_USER:-postgres}"
+      - "${DB_PASS:-yourpassword}"
+    networks:
+      - shared_network_144
+
+  frontend:
+    build: ./frontend
+    restart: always
+
+  nginx:
+    image: nginx:1.25
+    restart: always
+    depends_on:
+      - frontend
+      - ws
+      - backend
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+
+networks:
+  shared_network_144:
+    external: true
+    name: shared_network_144
